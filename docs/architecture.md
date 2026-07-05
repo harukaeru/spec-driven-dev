@@ -54,8 +54,8 @@
 | メソッド | パス | 処理 | 成功 |
 |---|---|---|---|
 | GET | `/api/tasks` | 一覧 | 200 |
-| POST | `/api/tasks` | 作成（title必須, trim, 空は422） | 201 |
-| PATCH | `/api/tasks/{id}` | 部分更新（title/completed） | 200 |
+| POST | `/api/tasks` | 作成（title必須, trim, 空は422 / priority省略時medium, 不正値は422） | 201 |
+| PATCH | `/api/tasks/{id}` | 部分更新（title/completed/priority） | 200 |
 | DELETE | `/api/tasks/{id}` | 削除 | 204 |
 | DELETE | `/api/tasks/completed` | 完了済み一括削除 | 200 `{deleted}` |
 | OPTIONS | `*` | CORSプリフライト | 204 |
@@ -76,17 +76,21 @@
 | `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | 一意ID |
 | `title` | TEXT | NOT NULL | タスク名 |
 | `completed` | INTEGER | NOT NULL DEFAULT 0 | 0=未完了 / 1=完了 |
+| `priority` | TEXT | NOT NULL DEFAULT 'medium' | `high`/`medium`/`low` |
 | `created_at` | TEXT | NOT NULL DEFAULT (datetime('now')) | 作成日時（UTC） |
 
 - API 表現では `completed` を真偽値（`true/false`）へ変換して返す。
-- 一覧は `ORDER BY id DESC`（新しい順）。
+- 一覧は `ORDER BY id DESC`（新しい順）。優先度順の並び替えはフロントエンド側で行う（§5参照）。
+- 既存DB（`priority` カラム未追加）への互換のため、`init_db()` で `PRAGMA table_info` を確認し
+  無ければ `ALTER TABLE tasks ADD COLUMN priority ...` でマイグレーションする。
 
 ## 5. フロントエンド設計（`src/App.jsx`）
 
-- 単一コンポーネントに状態を集約: `tasks` / `input` / `filter` / `loading` / `error`。
+- 単一コンポーネントに状態を集約: `tasks` / `input` / `priority` / `filter` / `sortBy` / `loading` / `error`。
 - 初期化: `useEffect` で `GET /api/tasks` を実行し `tasks` に反映。
 - 操作: 各操作が対応APIを呼び、成功時にローカル状態を更新（楽観的ではなくレスポンス反映型）。
-- 派生値: `visibleTasks`（フィルタ適用）と `remaining`（残件数）を `useMemo` 等で算出。
+- 派生値: `visibleTasks`（フィルタ適用 → 優先度順/追加順の並び替え適用）と `remaining`（残件数）を
+  `useMemo` 等で算出。並び替えはクライアント側で行い、API呼び出しを増やさない。
 - 通信補助: `fetchJSON` が非2xxを検知し、エラーメッセージを抽出して例外化 → `error` 表示。
 
 ## 6. 通信・CORS
@@ -117,7 +121,7 @@
 
 - **DB差し替え**: DB操作関数を境界に PostgreSQL 等へ移行可能な設計。接続部を抽象化する。
 - **認証**: 外部公開時にユーザー認証・オリジン制限を追加。
-- **機能拡張**: 期限・優先度・編集・検索（PRD Backlog 参照）。スキーマ拡張時はマイグレーション方針を定義。
+- **機能拡張**: 期限・編集・検索・カンバン表示（PRD Backlog 参照）。スキーマ拡張時はマイグレーション方針を定義。
 - **配信**: `dist/` の静的配信 + リバースプロキシで `/api` を集約する本番構成。
 
 ## 10. 関連ドキュメント

@@ -59,6 +59,18 @@
 - SHOULD: API 呼び出し失敗時にエラーメッセージを画面へ表示する。
 - SHOULD: エラー表示は次の成功操作で解消される。
 
+### FR-10 優先度設定（PRD: F-10）
+- MUST: タスク作成時に優先度（高 / 中 / 低）を選択できる。未指定時は「中」を既定値とする。
+- MUST: 既存タスクの優先度を後から変更できる。
+- MUST: 優先度は一覧上で視覚的に区別できる（バッジ等）。
+- **受け入れ基準**: 優先度「高」でタスクを作成すると、一覧に「高」のバッジ付きで表示される。
+
+### FR-11 優先度による並び替え（PRD: F-10）
+- MUST: 一覧を「追加順（既定）」または「優先度順（高→中→低）」で並び替えられる。
+- MUST: 選択中の並び順が視覚的に分かる。
+- MAY: 並び順の永続化は不要（再読込で既定に戻ってよい）。
+- **受け入れ基準**: 「優先度順」を選択すると、優先度が高いタスクから順に表示される。
+
 ---
 
 ## 2. API 要求（Interface Requirements）
@@ -68,19 +80,22 @@
 | メソッド | パス | 用途 | 成功時 |
 |---|---|---|---|
 | GET | `/api/tasks` | 一覧取得 | 200 + タスク配列 |
-| POST | `/api/tasks` | 作成 `{title}` | 201 + 作成タスク |
-| PATCH | `/api/tasks/{id}` | 更新 `{title?, completed?}` | 200 + 更新タスク |
+| POST | `/api/tasks` | 作成 `{title, priority?}` | 201 + 作成タスク |
+| PATCH | `/api/tasks/{id}` | 更新 `{title?, completed?, priority?}` | 200 + 更新タスク |
 | DELETE | `/api/tasks/{id}` | 削除 | 204 |
 | DELETE | `/api/tasks/completed` | 完了済み一括削除 | 200 + `{deleted: N}` |
 
 ### タスクリソース（Task）
 
 ```json
-{ "id": 1, "title": "牛乳を買う", "completed": false, "created_at": "2026-07-05 10:00:00" }
+{ "id": 1, "title": "牛乳を買う", "completed": false, "priority": "medium", "created_at": "2026-07-05 10:00:00" }
 ```
+
+- `priority` は `"high" | "medium" | "low"` のいずれか。省略時（作成時）は `"medium"`。
 
 ### エラー要求
 - MUST: `title` が空 → **422**（`{"error": ...}`）。
+- MUST: `priority` が `high/medium/low` 以外 → **422**（`{"error": ...}`）。
 - MUST: 不正なJSONボディ → **400**。
 - MUST: 存在しない `id` への PATCH/DELETE → **404**。
 - MUST: 未定義ルート → **404**。
@@ -98,6 +113,7 @@
 
 ### NFR-03 データ整合性
 - MUST: `title` は NOT NULL。`completed` は真偽（0/1）で保持。
+- MUST: `priority` は NOT NULL、既定値 `'medium'`。許容値は `high/medium/low` のみ。
 - MUST: `id` は自動採番の一意キー。
 
 ### NFR-04 保守性
@@ -119,7 +135,7 @@
 
 | 要求 | 主な実装箇所 |
 |---|---|
-| FR-01〜09 UI | `src/App.jsx` |
+| FR-01〜11 UI | `src/App.jsx` |
 | API/永続化 | `backend/server.py` |
 | 開発時プロキシ | `vite.config.js`（`/api` → `:8000`） |
 | データモデル | `backend/server.py` の `tasks` テーブル定義 |
