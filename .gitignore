@@ -1,3 +1,13 @@
+# ローカルに配置した自己完結型 Python ランタイム（配布物には含めない）
+.python/
+
+# SQLite データベースファイル
+backend/*.db
+
+# Python
+__pycache__/
+*.pyc
+
 # Logs
 logs
 *.log
