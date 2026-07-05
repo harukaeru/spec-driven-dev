@@ -71,10 +71,44 @@ h1 {
   background: var(--primary-hover);
 }
 
+.priority-select {
+  padding: 10px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  background: #fff;
+  color: var(--text);
+}
+
 .filters {
   display: flex;
   gap: 8px;
   margin-bottom: 16px;
+}
+
+.sort-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 16px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.sort-btn {
+  padding: 4px 10px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.sort-btn.active {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
 }
 
 .filter-btn {
@@ -123,6 +157,31 @@ h1 {
 .task-item.completed .task-title {
   text-decoration: line-through;
   color: var(--muted);
+}
+
+.priority-badge {
+  border: none;
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-right: 4px;
+}
+
+.priority-badge.priority-high {
+  background: #fdecea;
+  color: #b3261e;
+}
+
+.priority-badge.priority-medium {
+  background: #fff4e0;
+  color: #9a6700;
+}
+
+.priority-badge.priority-low {
+  background: #e6f4ea;
+  color: #1e7b34;
 }
 
 .delete-btn {

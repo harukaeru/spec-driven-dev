@@ -5,10 +5,12 @@ RDB には SQLite を使用する。追加の依存パッケージは不要。
 
 エンドポイント:
   GET    /api/tasks              タスク一覧を取得
-  POST   /api/tasks              タスクを作成          body: {"title": str}
-  PATCH  /api/tasks/{id}         タスクを更新          body: {"title"?: str, "completed"?: bool}
+  POST   /api/tasks              タスクを作成          body: {"title": str, "priority"?: str}
+  PATCH  /api/tasks/{id}         タスクを更新          body: {"title"?: str, "completed"?: bool, "priority"?: str}
   DELETE /api/tasks/{id}         タスクを削除
   DELETE /api/tasks/completed    完了済みタスクを一括削除
+
+`priority` は "high" / "medium" / "low" のいずれか（既定値: "medium"）。
 """
 
 import json
@@ -19,6 +21,9 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 HOST = os.environ.get("HOST", "127.0.0.1")
 PORT = int(os.environ.get("PORT", "8000"))
 DB_PATH = os.environ.get("DB_PATH", os.path.join(os.path.dirname(__file__), "tasks.db"))
+
+PRIORITIES = ("high", "medium", "low")
+DEFAULT_PRIORITY = "medium"
 
 
 def get_conn():
@@ -36,10 +41,17 @@ def init_db():
                 id         INTEGER PRIMARY KEY AUTOINCREMENT,
                 title      TEXT    NOT NULL,
                 completed  INTEGER NOT NULL DEFAULT 0,
+                priority   TEXT    NOT NULL DEFAULT 'medium',
                 created_at TEXT    NOT NULL DEFAULT (datetime('now'))
             )
             """
         )
+        # 既存DB（priority カラム未追加）向けのマイグレーション。
+        columns = {row["name"] for row in conn.execute("PRAGMA table_info(tasks)")}
+        if "priority" not in columns:
+            conn.execute(
+                f"ALTER TABLE tasks ADD COLUMN priority TEXT NOT NULL DEFAULT '{DEFAULT_PRIORITY}'"
+            )
 
 
 def row_to_task(row):
@@ -47,6 +59,7 @@ def row_to_task(row):
         "id": row["id"],
         "title": row["title"],
         "completed": bool(row["completed"]),
+        "priority": row["priority"],
         "created_at": row["created_at"],
     }
 
@@ -57,9 +70,11 @@ def list_tasks():
     return [row_to_task(r) for r in rows]
 
 
-def create_task(title):
+def create_task(title, priority=DEFAULT_PRIORITY):
     with get_conn() as conn:
-        cur = conn.execute("INSERT INTO tasks (title) VALUES (?)", (title,))
+        cur = conn.execute(
+            "INSERT INTO tasks (title, priority) VALUES (?, ?)", (title, priority)
+        )
         row = conn.execute("SELECT * FROM tasks WHERE id = ?", (cur.lastrowid,)).fetchone()
     return row_to_task(row)
 
@@ -72,6 +87,9 @@ def update_task(task_id, fields):
     if "completed" in fields:
         sets.append("completed = ?")
         values.append(1 if fields["completed"] else 0)
+    if "priority" in fields:
+        sets.append("priority = ?")
+        values.append(fields["priority"])
     if not sets:
         return get_task(task_id)
     values.append(task_id)
@@ -152,7 +170,11 @@ class Handler(BaseHTTPRequestHandler):
         if not title:
             self._send(422, {"error": "title is required"})
             return
-        self._send(201, create_task(title))
+        priority = data.get("priority", DEFAULT_PRIORITY)
+        if priority not in PRIORITIES:
+            self._send(422, {"error": "priority must be one of: high, medium, low"})
+            return
+        self._send(201, create_task(title, priority))
 
     def do_PATCH(self):
         route = self._route()
@@ -177,6 +199,12 @@ class Handler(BaseHTTPRequestHandler):
             fields["title"] = title
         if "completed" in data:
             fields["completed"] = bool(data["completed"])
+        if "priority" in data:
+            priority = data.get("priority")
+            if priority not in PRIORITIES:
+                self._send(422, {"error": "priority must be one of: high, medium, low"})
+                return
+            fields["priority"] = priority
         task = update_task(task_id, fields)
         if task is None:
             self._send(404, {"error": "not found"})

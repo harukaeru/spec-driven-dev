@@ -2,6 +2,10 @@ import { useEffect, useMemo, useState } from 'react'
 
 const API = '/api/tasks'
 
+const PRIORITIES = ['high', 'medium', 'low']
+const PRIORITY_LABEL = { high: '高', medium: '中', low: '低' }
+const PRIORITY_RANK = { high: 0, medium: 1, low: 2 }
+
 async function fetchJSON(url, options) {
   const res = await fetch(url, options)
   if (!res.ok) {
@@ -20,7 +24,9 @@ async function fetchJSON(url, options) {
 export default function App() {
   const [tasks, setTasks] = useState([])
   const [input, setInput] = useState('')
+  const [priority, setPriority] = useState('medium')
   const [filter, setFilter] = useState('all') // all | active | completed
+  const [sortBy, setSortBy] = useState('created') // created | priority
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
@@ -40,7 +46,7 @@ export default function App() {
       const task = await fetchJSON(API, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title }),
+        body: JSON.stringify({ title, priority }),
       })
       setTasks((prev) => [task, ...prev])
       setInput('')
@@ -84,11 +90,30 @@ export default function App() {
     }
   }
 
+  const changePriority = async (task, newPriority) => {
+    try {
+      const updated = await fetchJSON(`${API}/${task.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ priority: newPriority }),
+      })
+      setTasks((prev) => prev.map((t) => (t.id === task.id ? updated : t)))
+      setError(null)
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
   const visibleTasks = useMemo(() => {
-    if (filter === 'active') return tasks.filter((t) => !t.completed)
-    if (filter === 'completed') return tasks.filter((t) => t.completed)
-    return tasks
-  }, [tasks, filter])
+    const filtered =
+      filter === 'active'
+        ? tasks.filter((t) => !t.completed)
+        : filter === 'completed'
+          ? tasks.filter((t) => t.completed)
+          : tasks
+    if (sortBy !== 'priority') return filtered
+    return [...filtered].sort((a, b) => PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority])
+  }, [tasks, filter, sortBy])
 
   const remaining = tasks.filter((t) => !t.completed).length
 
@@ -104,6 +129,18 @@ export default function App() {
           placeholder="新しいタスクを入力..."
           onChange={(e) => setInput(e.target.value)}
         />
+        <select
+          className="priority-select"
+          value={priority}
+          onChange={(e) => setPriority(e.target.value)}
+          aria-label="優先度"
+        >
+          {PRIORITIES.map((p) => (
+            <option key={p} value={p}>
+              {PRIORITY_LABEL[p]}
+            </option>
+          ))}
+        </select>
         <button className="add-btn" type="submit">
           追加
         </button>
@@ -119,6 +156,19 @@ export default function App() {
             onClick={() => setFilter(f)}
           >
             {f === 'all' ? 'すべて' : f === 'active' ? '未完了' : '完了'}
+          </button>
+        ))}
+      </div>
+
+      <div className="sort-controls">
+        <span className="sort-label">並び順:</span>
+        {['created', 'priority'].map((s) => (
+          <button
+            key={s}
+            className={`sort-btn ${sortBy === s ? 'active' : ''}`}
+            onClick={() => setSortBy(s)}
+          >
+            {s === 'created' ? '追加順' : '優先度順'}
           </button>
         ))}
       </div>
@@ -141,6 +191,18 @@ export default function App() {
               />
               <span className="task-title">{task.title}</span>
             </label>
+            <select
+              className={`priority-badge priority-${task.priority}`}
+              value={task.priority}
+              onChange={(e) => changePriority(task, e.target.value)}
+              aria-label="優先度"
+            >
+              {PRIORITIES.map((p) => (
+                <option key={p} value={p}>
+                  {PRIORITY_LABEL[p]}
+                </option>
+              ))}
+            </select>
             <button
               className="delete-btn"
               onClick={() => deleteTask(task.id)}
