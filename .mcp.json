@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "tasks-db": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-server-sqlite-npx",
+        "/workspaces/spec-driven-dev/backend/tasks.db"
+      ]
+    }
+  }
+}

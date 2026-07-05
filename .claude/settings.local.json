@@ -43,7 +43,14 @@
       "Bash(curl -s -X POST localhost:5173/api/tasks -H 'Content-Type: application/json' -d '{\"title\":\"ブラウザ経由テスト\"}')",
       "Bash(curl -s localhost:5173/api/tasks)",
       "Bash(curl -s -o /dev/null -w \"5173=%{http_code} \" localhost:5173/)",
-      "Bash(curl -s -o /dev/null -w \"8000=%{http_code}\\\\n\" localhost:8000/api/tasks)"
+      "Bash(curl -s -o /dev/null -w \"8000=%{http_code}\\\\n\" localhost:8000/api/tasks)",
+      "mcp__tasks-db__list_tables",
+      "mcp__tasks-db__describe_table",
+      "mcp__tasks-db__read_query"
     ]
-  }
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "tasks-db"
+  ]
 }
