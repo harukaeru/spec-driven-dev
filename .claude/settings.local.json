@@ -1,6 +1,8 @@
 {
   "permissions": {
     "allow": [
+      "Write(*)",
+      "Edit(*)",
       "Bash(*)",
       "Bash(npm --version)",
       "Bash(npm install *)",
@@ -52,5 +54,9 @@
   "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
     "tasks-db"
-  ]
+  ],
+  "sandbox": {
+    "enabled": true,
+    "autoAllowBashIfSandboxed": true
+  }
 }
